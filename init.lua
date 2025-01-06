@@ -29,6 +29,58 @@ vim.opt.rtp:prepend(lazypath)
 -- Need to load this before the plugin is loaded
 vim.api.nvim_command('source ~/.vimwikirc')
 
+-- [[ Configure LSP ]]
+--  This function gets run when an LSP connects to a particular buffer.
+local on_attach = function(_, bufnr)
+  local nmap = function(keys, func, desc)
+    if desc then
+      desc = 'LSP: ' .. desc
+    end
+
+    vim.keymap.set('n', keys, func, { buffer = bufnr, desc = desc })
+  end
+
+  nmap('<leader>rn', vim.lsp.buf.rename, '[R]e[n]ame')
+  nmap('<leader>ca', vim.lsp.buf.code_action, '[C]ode [A]ction')
+  nmap('<leader>ce', vim.lsp.buf.execute_command, '[C]ommand [E]xecute')
+
+  nmap('gd', require('telescope.builtin').lsp_definitions, '[G]oto [D]efinition')
+  nmap('gr', require('telescope.builtin').lsp_references, '[G]oto [R]eferences')
+  nmap('gI', require('telescope.builtin').lsp_implementations, '[G]oto [I]mplementation')
+  nmap('<leader>D', require('telescope.builtin').lsp_type_definitions, 'Type [D]efinition')
+  nmap('<leader>ds', require('telescope.builtin').lsp_document_symbols, '[D]ocument [S]ymbols')
+  nmap('<leader>ws', require('telescope.builtin').lsp_dynamic_workspace_symbols, '[W]orkspace [S]ymbols')
+
+  -- See `:help K` for why this keymap
+  nmap('K', vim.lsp.buf.hover, 'Hover Documentation')
+  nmap('<C-k>', vim.lsp.buf.signature_help, 'Signature Documentation')
+
+  -- Lesser used LSP functionality
+  nmap('gD', vim.lsp.buf.declaration, '[G]oto [D]eclaration')
+  nmap('<leader>wa', vim.lsp.buf.add_workspace_folder, '[W]orkspace [A]dd Folder')
+  nmap('<leader>wr', vim.lsp.buf.remove_workspace_folder, '[W]orkspace [R]emove Folder')
+  nmap('<leader>wl', function()
+    print(vim.inspect(vim.lsp.buf.list_workspace_folders()))
+  end, '[W]orkspace [L]ist Folders')
+
+  -- Create a command `:Format` local to the LSP buffer
+  vim.api.nvim_buf_create_user_command(bufnr, 'Format', function(_)
+    vim.lsp.buf.format()
+  end, { desc = 'Format current buffer with LSP' })
+end
+
+local on_attach_rust = function(_, bufnr)
+  on_attach(_, bufnr)
+  local nmap = function(keys, func, desc)
+    if desc then
+      desc = 'LSP: ' .. desc
+    end
+    vim.keymap.set('n', keys, func, { buffer = bufnr, desc = desc })
+  end
+
+  -- nmap('<leader>ca', vim.cmd.RustLsp('codeAction'), '[C]ode [A]ction')
+end
+
 -- [[ Configure plugins ]]
 require('lazy').setup({
   -- Git related plugins
@@ -48,6 +100,30 @@ require('lazy').setup({
   'ledger/vim-ledger',
   'vimwiki/vimwiki',
   'DaeZak/crafttweaker-vim-highlighting',
+  {
+    'mrcjkb/rustaceanvim',
+    version = '^5', -- Recommended
+    lazy = false, -- This plugin is already lazy
+    config = function()
+      vim.g.rustaceanvim = {
+        server = {
+          on_attach = on_attach_rust,
+          -- cmd = function()
+          --   local mason_registry = require('mason-registry')
+          --   if mason_registry.is_installed('rust-analyzer') then
+          --     -- This may need to be tweaked depending on the operating system.
+          --     local ra = mason_registry.get_package('rust-analyzer')
+          --     local ra_filename = ra:get_receipt():get().links.bin['rust-analyzer']
+          --     return { ('%s/%s'):format(ra:get_install_path(), ra_filename or 'rust-analyzer') }
+          --   else
+          --     -- global installation
+          --     return { 'rust-analyzer' }
+          --   end
+          -- end,
+        },
+      }
+    end
+  },
   {
     'lervag/vimtex',
     config = function()
@@ -82,9 +158,31 @@ require('lazy').setup({
 
       -- Useful status updates UI for LSP
       { 'j-hui/fidget.nvim',       opts = {} },
+    },
+  },
 
-      -- Additional lua configuration, makes nvim stuff amazing!
-      'folke/neodev.nvim',
+  {
+    {
+      "folke/lazydev.nvim",
+      ft = "lua", -- only load on lua files
+      opts = {
+        library = {
+          -- See the configuration section for more details
+          -- Load luvit types when the `vim.uv` word is found
+          { path = "luvit-meta/library", words = { "vim%.uv" } },
+        },
+      },
+    },
+    { "Bilal2453/luvit-meta", lazy = true }, -- optional `vim.uv` typings
+    { -- optional completion source for require statements and module annotations
+      "hrsh7th/nvim-cmp",
+      opts = function(_, opts)
+        opts.sources = opts.sources or {}
+        table.insert(opts.sources, {
+          name = "lazydev",
+          group_index = 0, -- set group index to 0 to skip loading LuaLS completions
+        })
+      end,
     },
   },
 
@@ -177,8 +275,8 @@ require('lazy').setup({
         end, { desc = 'git diff against last commit' })
 
         -- Toggles
-        map('n', '<leader>tb', gs.toggle_current_line_blame, { desc = 'toggle git blame line' })
-        map('n', '<leader>td', gs.toggle_deleted, { desc = 'toggle git show deleted' })
+        map('n', '<leader>tgb', gs.toggle_current_line_blame, { desc = 'toggle git blame line' })
+        map('n', '<leader>tgd', gs.toggle_deleted, { desc = 'toggle git show deleted' })
 
         -- Text object
         map({ 'o', 'x' }, 'ih', ':<C-U>Gitsigns select_hunk<CR>', { desc = 'select git hunk' })
@@ -197,7 +295,6 @@ require('lazy').setup({
       require("nvim-tree").setup {}
     end,
   },
-  'mbbill/undotree',
   {
     -- Theme
     'morhetz/gruvbox',
@@ -240,10 +337,10 @@ require('lazy').setup({
   -- Fuzzy Finder (files, lsp, etc)
   {
     'nvim-telescope/telescope.nvim',
-    branch = '0.1.x',
     dependencies = {
       'nvim-lua/plenary.nvim',
       'nvim-telescope/telescope-dap.nvim',
+      'nvim-telescope/telescope-symbols.nvim',
       -- Fuzzy Finder Algorithm which requires local dependencies to be built.
       -- Only load if `make` is available. Make sure you have the system
       -- requirements installed.
@@ -255,6 +352,39 @@ require('lazy').setup({
         end,
       },
     },
+  },
+
+  {
+    "debugloop/telescope-undo.nvim",
+    dependencies = { -- note how they're inverted to above example
+      {
+        "nvim-telescope/telescope.nvim",
+        dependencies = { "nvim-lua/plenary.nvim" },
+      },
+    },
+    keys = {
+      { -- lazy style key map
+        "<C-h>",
+        "<cmd>Telescope undo<cr>",
+        desc = "undo history",
+      },
+    },
+    opts = {
+      -- don't use `defaults = { }` here, do this in the main telescope spec
+      extensions = {
+        undo = {
+          -- telescope-undo.nvim config, see below
+        },
+        -- no other extensions here, they can have their own spec too
+      },
+    },
+    config = function(_, opts)
+      -- Calling telescope's setup from multiple specs does not hurt, it will happily merge the
+      -- configs for us. We won't use data, as everything is in it's own namespace (telescope
+      -- defaults, as well as each extension).
+      require("telescope").setup(opts)
+      require("telescope").load_extension("undo")
+    end,
   },
 
   {
@@ -301,13 +431,6 @@ require('lazy').setup({
         -- You can provide additional configuration to the handlers,
         -- see mason-nvim-dap README for more information
         handlers = {},
-
-        -- You'll need to check that you have the required things installed
-        -- online, please don't ask me how to install them :)
-        ensure_installed = {
-          -- Update this to ensure that you have the debuggers for the langs you want
-          'delve',
-        },
       }
 
       -- Basic debugging keymaps, feel free to change to your liking!
@@ -315,9 +438,7 @@ require('lazy').setup({
       vim.keymap.set('n', '<F11>', dap.step_into, { desc = 'Debug: Step Into' })
       vim.keymap.set('n', '<F10>', dap.step_over, { desc = 'Debug: Step Over' })
       vim.keymap.set('n', '<F3>', dap.step_out, { desc = 'Debug: Step Out' })
-      -- vim.keymap.set('n', '<leader>B', function()
-      --   dap.set_breakpoint(vim.fn.input 'Breakpoint condition: ')
-      -- end, { desc = 'Debug: Set Breakpoint' })
+      vim.keymap.set('v', '<M-k>', dapui.eval, { desc = 'Debug: Step Out' })
 
       -- Dap UI setup
       -- For more information, see |:help nvim-dap-ui|
@@ -393,6 +514,7 @@ require('lazy').setup({
           cvs = false,
           vimwiki = false,
           ["."] = false,
+          ["*"] = false,
         },
       })
 
@@ -642,45 +764,6 @@ vim.defer_fn(function()
   }
 end, 0)
 
--- [[ Configure LSP ]]
---  This function gets run when an LSP connects to a particular buffer.
-local on_attach = function(_, bufnr)
-  local nmap = function(keys, func, desc)
-    if desc then
-      desc = 'LSP: ' .. desc
-    end
-
-    vim.keymap.set('n', keys, func, { buffer = bufnr, desc = desc })
-  end
-
-  nmap('<leader>rn', vim.lsp.buf.rename, '[R]e[n]ame')
-  nmap('<leader>ca', vim.lsp.buf.code_action, '[C]ode [A]ction')
-
-  nmap('gd', require('telescope.builtin').lsp_definitions, '[G]oto [D]efinition')
-  nmap('gr', require('telescope.builtin').lsp_references, '[G]oto [R]eferences')
-  nmap('gI', require('telescope.builtin').lsp_implementations, '[G]oto [I]mplementation')
-  nmap('<leader>D', require('telescope.builtin').lsp_type_definitions, 'Type [D]efinition')
-  nmap('<leader>ds', require('telescope.builtin').lsp_document_symbols, '[D]ocument [S]ymbols')
-  nmap('<leader>ws', require('telescope.builtin').lsp_dynamic_workspace_symbols, '[W]orkspace [S]ymbols')
-
-  -- See `:help K` for why this keymap
-  nmap('K', vim.lsp.buf.hover, 'Hover Documentation')
-  nmap('<C-k>', vim.lsp.buf.signature_help, 'Signature Documentation')
-
-  -- Lesser used LSP functionality
-  nmap('gD', vim.lsp.buf.declaration, '[G]oto [D]eclaration')
-  nmap('<leader>wa', vim.lsp.buf.add_workspace_folder, '[W]orkspace [A]dd Folder')
-  nmap('<leader>wr', vim.lsp.buf.remove_workspace_folder, '[W]orkspace [R]emove Folder')
-  nmap('<leader>wl', function()
-    print(vim.inspect(vim.lsp.buf.list_workspace_folders()))
-  end, '[W]orkspace [L]ist Folders')
-
-  -- Create a command `:Format` local to the LSP buffer
-  vim.api.nvim_buf_create_user_command(bufnr, 'Format', function(_)
-    vim.lsp.buf.format()
-  end, { desc = 'Format current buffer with LSP' })
-end
-
 -- mason-lspconfig requires that these setup functions are called in this order
 -- before setting up the servers.
 require('mason').setup()
@@ -712,7 +795,6 @@ local servers = {
     },
   },
   openscad_lsp = {},
-  tsserver = {},
   html = { filetypes = { 'html', 'twig', 'hbs' } },
 
   lua_ls = {
@@ -722,11 +804,9 @@ local servers = {
       -- NOTE: toggle below to ignore Lua_LS's noisy `missing-fields` warnings
       diagnostics = { disable = { 'missing-fields' } },
     },
+    single_file_support = false,
   },
 }
-
--- Setup neovim lua configuration
-require('neodev').setup()
 
 -- nvim-cmp supports additional completion capabilities, so broadcast that to servers
 local capabilities = vim.lsp.protocol.make_client_capabilities()
@@ -741,6 +821,9 @@ mason_lspconfig.setup {
 
 mason_lspconfig.setup_handlers {
   function(server_name)
+    if server_name == 'rust_analyzer' then
+      return
+    end
     require('lspconfig')[server_name].setup {
       capabilities = capabilities,
       on_attach = on_attach,
@@ -755,6 +838,8 @@ mason_lspconfig.setup_handlers {
 local cmp = require 'cmp'
 local luasnip = require 'luasnip'
 require('luasnip.loaders.from_vscode').lazy_load()
+require('luasnip.loaders.from_snipmate').lazy_load({ paths = { vim.loop.cwd() .. "/snippets"}})
+require('luasnip.loaders.from_lua').lazy_load({ paths = { vim.loop.cwd() .. "/snippets"}})
 luasnip.config.setup {}
 
 cmp.setup {
@@ -813,10 +898,10 @@ nnoremap('Q', '@q')
 nnoremap('<Leader>v', ':so $MYVIMRC<CR>:edit!<CR>')
 nnoremap('<C-n>', require('nvim-tree.api').tree.toggle)
 nnoremap('<leader>n', require('nvim-tree.api').tree.find_file)
-nnoremap('<C-h>', vim.cmd.UndotreeToggle)
+-- nnoremap('<C-h>', vim.cmd.UndotreeToggle)
 
 local function toggle_inlay()
-  vim.lsp.inlay_hint.enable(0, not vim.lsp.inlay_hint.is_enabled())
+  vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled())
 end
 nnoremap('<leader>ti', toggle_inlay, "LSP toggle inlay hints")
 vim.keymap.set('i', '<F5>', '<C-R>=strftime("%Y-%m-%d %H:%M:%S (%Z)")<CR>')
@@ -847,7 +932,7 @@ dap.adapters.cppdbg = {
 
 dap.adapters.lldb = {
     type = "executable",
-    command = "/usr/bin/lldb-vscode", -- adjust as needed
+    command = "/usr/bin/lldb-dap", -- adjust as needed
     name = "lldb",
 }
 dap.configurations.rust = {
@@ -902,8 +987,8 @@ rr_dap.setup({
     reverse_step_into = "<F4>",
   }
 })
--- table.insert(dap.configurations.rust, rr_dap.get_rust_config())
---dap.configurations.cpp = { rr_dap.get_config() }
+table.insert(dap.configurations.rust, rr_dap.get_rust_config())
+dap.configurations.cpp = { rr_dap.get_config() }
 
 require('persistent-breakpoints').setup {
   load_breakpoints_event = { "BufReadPost" }
@@ -934,3 +1019,18 @@ end
 
 vim.keymap.set('n', '<leader>td', toggle_diagnostics, { noremap = true, silent = true, desc = "LSP Toggle diagnostics" })
 
+local status, true_zen = pcall(require, "true-zen")
+if not status then
+  return
+end
+
+-- Disable lualine when in zen mode
+true_zen.setup({
+  	integrations = {
+		lualine = true -- hide nvim-lualine (ataraxis)
+	},
+})
+
+vim.api.nvim_create_user_command('EditSnippets',function()
+  require("luasnip.loaders").edit_snippet_files()
+end,{})
