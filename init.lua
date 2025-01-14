@@ -438,7 +438,7 @@ require('lazy').setup({
       vim.keymap.set('n', '<F11>', dap.step_into, { desc = 'Debug: Step Into' })
       vim.keymap.set('n', '<F10>', dap.step_over, { desc = 'Debug: Step Over' })
       vim.keymap.set('n', '<F3>', dap.step_out, { desc = 'Debug: Step Out' })
-      vim.keymap.set('v', '<M-k>', dapui.eval, { desc = 'Debug: Step Out' })
+      vim.keymap.set('v', '<M-k>', dapui.eval, { desc = 'Debug: Eval' })
 
       -- Dap UI setup
       -- For more information, see |:help nvim-dap-ui|
@@ -723,12 +723,12 @@ vim.defer_fn(function()
         lookahead = true, -- Automatically jump forward to textobj, similar to targets.vim
         keymaps = {
           -- You can use the capture groups defined in textobjects.scm
-          -- ['aa'] = '@parameter.outer',
-          -- ['ia'] = '@parameter.inner',
-          -- ['af'] = '@function.outer',
-          -- ['if'] = '@function.inner',
-          -- ['ac'] = '@class.outer',
-          -- ['ic'] = '@class.inner',
+          ['aa'] = '@parameter.outer',
+          ['ia'] = '@parameter.inner',
+          ['af'] = '@function.outer',
+          ['if'] = '@function.inner',
+          ['ac'] = '@class.outer',
+          ['ic'] = '@class.inner',
         },
       },
       move = {
