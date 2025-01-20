@@ -92,6 +92,7 @@ require('lazy').setup({
   'tpope/vim-surround',
   'tpope/vim-abolish',
   'tpope/vim-eunuch',
+  'tpope/vim-repeat',
   'tpope/vim-obsession',
   'adelarsq/vim-matchit',
   'farmergreg/vim-lastplace',
@@ -146,6 +147,16 @@ require('lazy').setup({
       vim.keymap.set('x', '<Leader>a', '<Plug>(EasyAlign)')
       vim.keymap.set('n', '<Leader>a', '<Plug>(EasyAlign)') -- Currently not working
     end
+  },
+
+  {
+    "AckslD/nvim-neoclip.lua",
+    dependencies = {
+      {'nvim-telescope/telescope.nvim'},
+    },
+    config = function()
+      require('neoclip').setup()
+    end,
   },
 
   {
@@ -932,9 +943,10 @@ dap.adapters.cppdbg = {
 
 dap.adapters.lldb = {
     type = "executable",
-    command = "/usr/bin/lldb-dap", -- adjust as needed
+    command = "/usr/bin/codelldb", -- adjust as needed
     name = "lldb",
 }
+
 dap.configurations.rust = {
   {
     name = 'Launch',
