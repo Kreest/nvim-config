@@ -9,6 +9,7 @@ vim.g.maplocalleader = ','
 vim.o.tabstop = 4
 vim.o.shiftwidth = 4
 vim.o.expandtab = true
+vim.o.linebreak = true
 
 -- [[ Install `lazy.nvim` plugin manager ]]
 --    https://github.com/folke/lazy.nvim
@@ -42,7 +43,6 @@ local on_attach = function(_, bufnr)
 
   nmap('<leader>rn', vim.lsp.buf.rename, '[R]e[n]ame')
   nmap('<leader>ca', vim.lsp.buf.code_action, '[C]ode [A]ction')
-  nmap('<leader>ce', vim.lsp.buf.execute_command, '[C]ommand [E]xecute')
 
   nmap('gd', require('telescope.builtin').lsp_definitions, '[G]oto [D]efinition')
   nmap('gr', require('telescope.builtin').lsp_references, '[G]oto [R]eferences')
@@ -71,12 +71,12 @@ end
 
 local on_attach_rust = function(_, bufnr)
   on_attach(_, bufnr)
-  local nmap = function(keys, func, desc)
-    if desc then
-      desc = 'LSP: ' .. desc
-    end
-    vim.keymap.set('n', keys, func, { buffer = bufnr, desc = desc })
-  end
+  -- local nmap = function(keys, func, desc)
+  --   if desc then
+  --     desc = 'LSP: ' .. desc
+  --   end
+  --   vim.keymap.set('n', keys, func, { buffer = bufnr, desc = desc })
+  -- end
 
   -- nmap('<leader>ca', vim.cmd.RustLsp('codeAction'), '[C]ode [A]ction')
 end
@@ -102,6 +102,20 @@ require('lazy').setup({
   'vimwiki/vimwiki',
   'DaeZak/crafttweaker-vim-highlighting',
   {
+    'AckslD/messages.nvim',
+    config = 'require("messages").setup()',
+  },
+  {
+    'Dronakurl/injectme.nvim',
+    dependencies = {
+      "nvim-treesitter/nvim-treesitter",
+      "nvim-lua/plenary.nvim",
+      "nvim-telescope/telescope.nvim",
+    },
+    -- This is for lazy load and more performance on startup only
+    cmd = { "InjectmeToggle", "InjectmeSave", "InjectmeInfo" , "InjectmeLeave"},
+  },
+  {
     'mrcjkb/rustaceanvim',
     version = '^5', -- Recommended
     lazy = false, -- This plugin is already lazy
@@ -124,6 +138,64 @@ require('lazy').setup({
         },
       }
     end
+  },
+  { "cordx56/rustowl", dependencies = { "neovim/nvim-lspconfig" } },
+  {
+    'saecki/crates.nvim',
+    tag = 'stable',
+    config = function()
+      require('crates').setup{
+        lsp = {
+          enabled = true,
+          on_attach = on_attach,
+          actions = true,
+          completion = true,
+          hover = true,
+        },
+        completion = {
+          cmp = {
+            enabled = true,
+          },
+        },
+      }
+    end,
+  },
+  {
+    "folke/trouble.nvim",
+    opts = {}, -- for default options, refer to the configuration section for custom setup.
+    cmd = "Trouble",
+    keys = {
+      {
+        "<leader>xx",
+        "<cmd>Trouble diagnostics toggle<cr>",
+        desc = "Diagnostics (Trouble)",
+      },
+      {
+        "<leader>xX",
+        "<cmd>Trouble diagnostics toggle filter.buf=0<cr>",
+        desc = "Buffer Diagnostics (Trouble)",
+      },
+      {
+        "<leader>cs",
+        "<cmd>Trouble symbols toggle focus=false<cr>",
+        desc = "Symbols (Trouble)",
+      },
+      {
+        "<leader>cl",
+        "<cmd>Trouble lsp toggle focus=false win.position=right<cr>",
+        desc = "LSP Definitions / references / ... (Trouble)",
+      },
+      {
+        "<leader>xL",
+        "<cmd>Trouble loclist toggle<cr>",
+        desc = "Location List (Trouble)",
+      },
+      {
+        "<leader>xQ",
+        "<cmd>Trouble qflist toggle<cr>",
+        desc = "Quickfix List (Trouble)",
+      },
+    },
   },
   {
     'lervag/vimtex',
@@ -217,7 +289,16 @@ require('lazy').setup({
       'rafamadriz/friendly-snippets',
     },
   },
-
+  {
+    "joshuavial/aider.nvim",
+    opts = {
+      -- your configuration comes here
+      -- if you don't want to use the default settings
+      auto_manage_context = true, -- automatically manage buffer context
+      default_bindings = true,    -- use default <leader>A keybindings
+      debug = false,              -- enable debug logging
+    },
+  },
   -- Useful plugin to show you pending keybinds.
   { 'folke/which-key.nvim', opts = {} },
   {
@@ -399,14 +480,6 @@ require('lazy').setup({
   },
 
   {
-    "radyz/telescope-gitsigns",
-    dependencies = {
-      "lewis6991/gitsigns.nvim",
-      "nvim-telescope/telescope.nvim",
-    },
-  },
-
-  {
     -- Highlight, edit, and navigate code
     'nvim-treesitter/nvim-treesitter',
     dependencies = {
@@ -414,7 +487,24 @@ require('lazy').setup({
     },
     build = ':TSUpdate',
   },
-  {'pocco81/true-zen.nvim'},
+  {
+    "folke/zen-mode.nvim",
+    opts = {
+      window = {
+        options = {
+          signcolumn = "no"
+        },
+      },
+      plugins = {
+        gitsigns = { enabled = true},
+        tmux = { enabled = true},
+        alacritty = {
+          enabled = true,
+          font = 18, -- font size
+        },
+      }
+    }
+  },
   {
     'mfussenegger/nvim-dap',
     dependencies = {
@@ -484,7 +574,55 @@ require('lazy').setup({
       require('dap-go').setup()
     end,
   },
-
+  {
+    "GCBallesteros/jupytext.nvim",
+    opts = {
+        style = "markdown",
+        output_extension = "md",
+        force_ft = "markdown",
+    },
+  },
+  {
+    {
+      "quarto-dev/quarto-nvim",
+      dependencies = {
+        "jmbuhr/otter.nvim",
+        "nvim-treesitter/nvim-treesitter",
+      },
+      ft = {"quarto", "markdown"},
+    },
+  },
+  {
+    'jmbuhr/otter.nvim',
+    dependencies = {
+      'nvim-treesitter/nvim-treesitter',
+    },
+    config = function()
+      local opts = {
+        extensions = {
+          ["sage"] = "py",
+        },
+        verbose = { -- set to false to disable all verbose messages
+          no_code_found = true -- warn if otter.activate is called, but no injected code was found
+        },
+        buffers = {
+          write_to_disk = true,
+          set_filetype = true,
+        }
+      }
+      require("otter").setup(opts)
+      on_attach(_, 0)
+    end
+  },
+  {
+    "benlubas/molten-nvim",
+    version = "^1.0.0", -- use version <2.0.0 to avoid breaking changes
+    build = ":UpdateRemotePlugins",
+    init = function()
+      -- this is an example, not a default. Please see the readme for more configuration options
+      vim.g.molten_output_win_max_height = 12
+    end,
+  },
   {
     'Weissle/persistent-breakpoints.nvim',
     config = function()
@@ -595,8 +733,8 @@ vim.keymap.set('n', 'k', "v:count == 0 ? 'gk' : 'k'", { expr = true, silent = tr
 vim.keymap.set('n', 'j', "v:count == 0 ? 'gj' : 'j'", { expr = true, silent = true })
 
 -- Diagnostic keymaps
-vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, { desc = 'Go to previous diagnostic message' })
-vim.keymap.set('n', ']d', vim.diagnostic.goto_next, { desc = 'Go to next diagnostic message' })
+vim.keymap.set('n', '[d', function() vim.diagnostic.jump{count= 1} end, { desc = 'Go to previous diagnostic message' })
+vim.keymap.set('n', ']d', function() vim.diagnostic.jump{count=-1} end, { desc = 'Go to next diagnostic message' })
 vim.keymap.set('n', '<leader>e', vim.diagnostic.open_float, { desc = 'Open floating diagnostic message' })
 vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostics list' })
 
@@ -707,7 +845,7 @@ vim.keymap.set('n', '<leader>sr', require('telescope.builtin').resume, { desc = 
 vim.defer_fn(function()
   require('nvim-treesitter.configs').setup {
     -- Add languages to be installed here that you want installed for treesitter
-    ensure_installed = { 'c', 'cpp', 'go', 'lua', 'python', 'rust', 'tsx', 'javascript', 'typescript', 'vimdoc', 'vim', 'bash' },
+    ensure_installed = { 'c', 'cpp', 'go', 'lua', 'python', 'rust', 'tsx', 'javascript', 'typescript', 'vimdoc', 'vim', 'bash', 'latex' },
 
     -- Autoinstall languages that are not installed. Defaults to false (but you can change for yourself!)
     auto_install = false,
@@ -746,30 +884,24 @@ vim.defer_fn(function()
         enable = true,
         set_jumps = true, -- whether to set jumps in the jumplist
         goto_next_start = {
-          [']m'] = '@function.outer',
+          [']f'] = '@function.outer',
           [']]'] = '@class.outer',
         },
         goto_next_end = {
-          [']M'] = '@function.outer',
+          [']F'] = '@function.outer',
           [']['] = '@class.outer',
         },
         goto_previous_start = {
-          ['[m'] = '@function.outer',
+          ['[f'] = '@function.outer',
           ['[['] = '@class.outer',
         },
         goto_previous_end = {
-          ['[M'] = '@function.outer',
+          ['[F'] = '@function.outer',
           ['[]'] = '@class.outer',
         },
       },
       swap = {
-        enable = true,
-        swap_next = {
-          ['<leader>a'] = '@parameter.inner',
-        },
-        swap_previous = {
-          ['<leader>A'] = '@parameter.inner',
-        },
+        enable = false,
       },
     },
   }
@@ -788,7 +920,8 @@ local servers = {
     },
   },
   gopls = {},
-  pyright = {},
+  ruff = {},
+  pylsp = {},
   rust_analyzer = {
     imports = {
       granularity = {
@@ -806,6 +939,7 @@ local servers = {
     },
   },
   openscad_lsp = {},
+  texlab = {},
   html = { filetypes = { 'html', 'twig', 'hbs' } },
 
   lua_ls = {
@@ -904,6 +1038,10 @@ local nnoremap = function(keys, func, desc)
   vim.keymap.set('n', keys, func, { noremap = true, desc = desc })
 end
 
+local vnoremap = function(keys, func, desc)
+  vim.keymap.set('v', keys, func, { noremap = true, desc = desc })
+end
+
 nnoremap(';', ':')
 nnoremap('Q', '@q')
 nnoremap('<Leader>v', ':so $MYVIMRC<CR>:edit!<CR>')
@@ -942,9 +1080,9 @@ dap.adapters.cppdbg = {
 }
 
 dap.adapters.lldb = {
-    type = "executable",
-    command = "/usr/bin/codelldb", -- adjust as needed
-    name = "lldb",
+  type = "executable",
+  command = "/usr/bin/codelldb", -- adjust as needed
+  name = "lldb",
 }
 
 dap.configurations.rust = {
@@ -1009,9 +1147,9 @@ require('persistent-breakpoints').setup {
 require("dap-python").setup("python")
 
 
-function toggle_diagnostics(global)
+local function toggle_diagnostics(everywhere)
   local vars, bufnr, cmd
-  if global then
+  if everywhere then
     vars = vim.g
     bufnr = nil
   else
@@ -1031,18 +1169,19 @@ end
 
 vim.keymap.set('n', '<leader>td', toggle_diagnostics, { noremap = true, silent = true, desc = "LSP Toggle diagnostics" })
 
-local status, true_zen = pcall(require, "true-zen")
-if not status then
-  return
-end
-
--- Disable lualine when in zen mode
-true_zen.setup({
-  	integrations = {
-		lualine = true -- hide nvim-lualine (ataraxis)
-	},
-})
 
 vim.api.nvim_create_user_command('EditSnippets',function()
   require("luasnip.loaders").edit_snippet_files()
 end,{})
+
+-- Copy to clipboard
+vnoremap('<leader>y', '"+y')
+nnoremap('<leader>Y', '"+yg_')
+nnoremap('<leader>y', '"+y')
+
+-- Paste from clipboard
+nnoremap('<leader>p', '"+p')
+nnoremap('<leader>P', '"+P')
+vnoremap('<leader>p', '"+p')
+vnoremap('<leader>P', '"+P')
+
