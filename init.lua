@@ -40,16 +40,24 @@ local on_attach = function(_, bufnr)
 
     vim.keymap.set('n', keys, func, { buffer = bufnr, desc = desc })
   end
+  local vmap = function(keys, func, desc)
+    if desc then
+      desc = 'LSP: ' .. desc
+    end
+
+    vim.keymap.set('v', keys, func, { buffer = bufnr, desc = desc })
+  end
 
   nmap('<leader>rn', vim.lsp.buf.rename, '[R]e[n]ame')
   nmap('<leader>ca', vim.lsp.buf.code_action, '[C]ode [A]ction')
+  vmap('<leader>ca', vim.lsp.buf.code_action, '[C]ode [A]ction (Range)')
 
   nmap('gd', require('telescope.builtin').lsp_definitions, '[G]oto [D]efinition')
   nmap('gr', require('telescope.builtin').lsp_references, '[G]oto [R]eferences')
   nmap('gI', require('telescope.builtin').lsp_implementations, '[G]oto [I]mplementation')
   nmap('<leader>D', require('telescope.builtin').lsp_type_definitions, 'Type [D]efinition')
   nmap('<leader>ds', require('telescope.builtin').lsp_document_symbols, '[D]ocument [S]ymbols')
-  nmap('<leader>ws', require('telescope.builtin').lsp_dynamic_workspace_symbols, '[W]orkspace [S]ymbols')
+  nmap('<leader>sws', require('telescope.builtin').lsp_dynamic_workspace_symbols, '[W]orkspace [S]ymbols')
 
   -- See `:help K` for why this keymap
   nmap('K', vim.lsp.buf.hover, 'Hover Documentation')
@@ -606,7 +614,7 @@ require('lazy').setup({
           no_code_found = true -- warn if otter.activate is called, but no injected code was found
         },
         buffers = {
-          write_to_disk = true,
+          -- write_to_disk = true,
           set_filetype = true,
         }
       }
@@ -831,6 +839,8 @@ end
 vim.keymap.set('n', '<leader>s/', telescope_live_grep_open_files, { desc = '[S]earch [/] in Open Files' })
 vim.keymap.set('n', '<leader>ss', function() require('telescope.builtin').builtin { include_extensions = true } end,
   { desc = '[S]earch [S]elect Telescope' })
+vim.keymap.set('n', '<leader>st', function() require('telescope.builtin').symbols { sources = {'tokipona'} } end,
+  { desc = '[S]earch [T]oki pona' })
 vim.keymap.set('n', '<leader>gf', require('telescope.builtin').git_files, { desc = 'Search [G]it [F]iles' })
 vim.keymap.set('n', '<leader>sf', require('telescope.builtin').find_files, { desc = '[S]earch [F]iles' })
 vim.keymap.set('n', '<leader>sh', require('telescope.builtin').help_tags, { desc = '[S]earch [H]elp' })
@@ -1185,3 +1195,16 @@ nnoremap('<leader>P', '"+P')
 vnoremap('<leader>p', '"+p')
 vnoremap('<leader>P', '"+P')
 
+
+debug.traceback = function(message, level) -- For getting full paths in tracebacks
+  level = level or 2 -- Skip this function itself
+  local trace = { message }
+  while true do
+    local info = debug.getinfo(level, "Snl")
+    if not info then break end
+    local src = info.source:sub(1, 1) == "@" and info.source:sub(2) or info.source
+    table.insert(trace, string.format("%s:%d: in function '%s'", src, info.currentline, info.name or "?"))
+    level = level + 1
+  end
+  return table.concat(trace, "\n")
+end
